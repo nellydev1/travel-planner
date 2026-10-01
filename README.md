@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Trip Planner
 
-## Getting Started
+An AI travel planner built with **Next.js (App Router), React, TypeScript, and CSS Modules**.
+Enter a destination and the number of days (optionally pick your interests), and Claude
+generates a day-by-day itinerary that renders as a card for each day.
 
-First, run the development server:
+## How it works
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- `src/app/page.tsx` – client UI: form, loading state, itinerary cards
+- `src/app/api/itinerary/route.ts` – POST endpoint; validates input with Zod and maps errors to friendly messages
+- `src/lib/claude.ts` – calls the Claude API (server-only, so the API key never reaches the browser)
+- `src/lib/itinerary.ts` – shared Zod schemas for the request and the itinerary
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The itinerary uses **structured outputs**: the Zod `ItinerarySchema` is passed to
+`client.beta.messages.parse()` via `betaZodOutputFormat`, so Claude's response is guaranteed to
+match the schema and comes back already parsed and typed. The request also enables server-side
+refusal fallbacks (`fallbacks: "default"`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Getting started
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Add your Anthropic API key to `.env.local` (this file is git-ignored; `.env.example` shows the format):
+   ```
+   ANTHROPIC_API_KEY=sk-ant-...
+   ```
+3. Run the dev server and open http://localhost:3000:
+   ```bash
+   npm run dev
+   ```
 
-## Learn More
+### Mock mode (no API key needed)
 
-To learn more about Next.js, take a look at the following resources:
+Set `USE_MOCK_DATA=true` in `.env.local` to get fake itineraries from `src/lib/mockItinerary.ts`
+instead of calling Claude. The mock waits about 1.5 seconds so you still see the loading state, and the page shows a
+"Demo mode" banner. Remove the line (or set it to `false`) once you add your key, then restart
+the dev server.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploying
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Set `ANTHROPIC_API_KEY` as an environment variable on your host (e.g. Vercel → Project Settings →
+Environment Variables). The API route sets `maxDuration = 120` because long trips can take a
+while to generate.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Because every request spends API credits, consider adding rate limiting before sharing the URL
+publicly (and set a monthly spend limit in the Claude Console).
